@@ -1,11 +1,32 @@
 <html>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
 <script>
-  var socket = io();
+  
+  var user = "{'firstName':'sandeep', 'lastName':'sharma', 'email':'ss@gmail.com', 'phone':'43434243'}";
+	
+	var socket = io.connect();
+	
     socket.on('connect', function(){
-		console.log("connected")
+		console.log("connected")		
+		
+		// Send user info
+		socket.emit('userInfo', user);
+		
+		socket.on('location', function(msg){
+			console.log(msg)
+		});
+	});
+	
+	
+	$(document).ready(function(){
+		$('#sendLocation').click(function () {
+			socket.emit('location', user);
+		})
 	});
 </script>
-
+<body>
+	<button id="sendLocation" >Send Location</button>
+</body>
 </html>
