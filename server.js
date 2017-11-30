@@ -5,12 +5,21 @@ var redis = require('redis');
 var amqp = require('amqplib/callback_api');
 
 var rclient = redis.createClient(); // will use 127.0.0.1 and 6379
-amqp.connect('amqp://localhost', function(err, conn) {
-    console.log("Rabbit MQ connected");
+
+var amqpChannel = null;
+var amqpExchange = 'exchange';
+
+// Connect to RabbitMQ
+amqp.connect('amqp://test:test@10.50.1.148', function(err, conn) {
+    console.log("## Rabbit MQ connected ##");			
+		conn.createChannel(function(err, ch) {
+			amqpChannel = ch;
+			amqpChannel.assertExchange(amqpExchange, 'fanout', {durable: true});						
+		});
 });
 
 rclient.on('connect', function () {
-    console.log('Redis connected');
+    console.log('## Redis Connected ##');
 });
 
 // Test Mobile Client
@@ -20,28 +29,21 @@ app.get('/client', function (req, res) {
 
 // Connect Socket IO
 io.on('connection', function (socket) {
-    console.log('a user connected');
+    console.log('## Socket User connected ## ' + socket.id);
 
     // On get User Info
     socket.on('userInfo', function (user) {
-        console.log('UserInfo Received = ' + user);
+        console.log('> UserInfo Received = ' + user);
         // Store session user info into Redis cache
-        console.log("Storing Session ID = " + socket.id);
-        var userObj = {'dd': 'ee'};
-        rclient.hmset('Socket:' + socket.id, {'dd': 'ee'}, function (err, reply) {
-            console.log("Stored data of Session ID = " + socket.id + " ## " + reply);
-        });
-
-        rclient.hgetall('Socket:' + socket.id, function (err, object) {
-            console.log("Socket stored in cache = " + JSON.stringify(object));
-        });
-
+        console.log("> Storing Session ID = " + socket.id);
+        storeUserInfoInCache(socket.id, user);
     });
-
-
-
-
-
+	
+	// On get Location Info
+    socket.on('location', function (location) {
+        console.log('Location Received = ' + location);
+		sendLocationAmqp(location);
+	});
 
 
     // Receive Location from mobile client
@@ -55,3 +57,23 @@ io.on('connection', function (socket) {
 http.listen(3000, function () {
     console.log('listening on *:3000');
 });
+
+
+function storeUserInfoInCache(socketId, user) {
+	var userObj = JSON.parse(user);	
+	rclient.hmset('Socket', userObj, function (err, reply) {
+		console.log("> Stored User data of Session ID = " + socketId + " ## " + reply);
+	});
+
+	rclient.hgetall('Socket', function (err, object) {
+		console.log("> Get User data stored in cache = " + JSON.stringify(object));
+	});
+}
+
+//Send location to RabbitMQ to be saved into database
+function sendLocationAmqp(location) {
+	console.log("> sending AMQP");
+	amqpChannel.publish(amqpExchange, '', new Buffer(location));
+	console.log("> Sent to AMQP", location);
+}
+

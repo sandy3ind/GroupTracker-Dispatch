@@ -4,7 +4,8 @@
 <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
 <script>
   
-  var user = "{'firstName':'sandeep', 'lastName':'sharma', 'email':'ss@gmail.com', 'phone':'43434243'}";
+  var user = '{"firstName":"sandeep", "lastName":"sharma", "email":"ss@gmail.com", "phone":"43434243"}';
+  var locationJson = '{"latitude":323223, "longitude":5454}';
 	
 	var socket = io.connect();
 	
@@ -22,7 +23,7 @@
 	
 	$(document).ready(function(){
 		$('#sendLocation').click(function () {
-			socket.emit('location', user);
+			socket.emit('location', locationJson);
 		})
 	});
 </script>
